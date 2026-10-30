@@ -47,8 +47,10 @@ def connect_listener():
 
     with conn.cursor() as cur:
         cur.execute("LISTEN rds_playback;")
+        cur.execute("LISTEN database_errors;")
 
     logging.info("Listening for PostgreSQL notifications on rds_playback")
+    logging.info("Listening for PostgreSQL notifications on database_errors")
     return conn
 
 def find_announcement_file(trackid, count):
@@ -222,25 +224,30 @@ def main():
                 listener_conn.poll()
 
                 while listener_conn.notifies:
-                    current_song_category = None
-                    that_80s_show = False
-                    a_category = False
-                    b_category = False
-                    c_category = False
-                    d_category = False
-                    e_category = False
-                    f_category = False
-                    g_category = False
                     notification = listener_conn.notifies.pop(0)
-                    trackid, current_song_category = process_notification(
-                        listener_conn,
-                        notification,
-                    )
+                    if notification.channel == 'rds_playback':
+                        current_song_category = None
+                        that_80s_show = False
+                        a_category = False
+                        b_category = False
+                        c_category = False
+                        d_category = False
+                        e_category = False
+                        f_category = False
+                        g_category = False
+                        trackid, current_song_category = process_notification(
+                            listener_conn,
+                            notification,
+                        )
 
-                    if count >= 3:
-                        count = 1
-                    announcement_file = find_announcement_file(trackid, count)
-                    count += 1
+                        if count >= 3:
+                            count = 1
+                        announcement_file = find_announcement_file(trackid, count)
+                        count += 1
+
+                    elif notification.channel == 'database_errors':
+                        logging.error(f"CRITICAL: Caught database error payload: {notification.payload}")
+                        announcement_file = find_announcement_file(0, 0)
 
     except KeyboardInterrupt:
         logging.info("Exiting on keyboard interrupt")
