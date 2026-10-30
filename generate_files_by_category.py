@@ -187,8 +187,6 @@ def main():
             time.sleep(2)
             count = 2
             text = song_title + ", that's "  + song_artist + ' on K-V-W-J!'
-            if 'ABBA' in text:
-                pass
             get_announcement_mp3_files(text,trackid[0],count)
 
     except KeyboardInterrupt:
