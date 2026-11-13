@@ -1,6 +1,6 @@
 # back-announcements
 
-The announcement listener rotates globally through variants 1, 2, 3, and 4
+The announcement listener rotates globally through variants 1, 3, 2, and 4
 across playback updates. Variants 3 and 4 are the year-based announcements.
 For each track, missing files are skipped in rotation order; the next update
 starts after the variant actually selected. Files may be in subdirectories of

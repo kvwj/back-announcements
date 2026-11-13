@@ -25,7 +25,7 @@ class AnnouncementRotationTests(unittest.TestCase):
             path, count = select_announcement_file(self.folder, 42, count)
             selected.append(path.name)
         self.assertEqual(selected, [
-            "42-1~0.mp3", "42-2~0.mp3", "42-3~0.mp3", "42-4~0.mp3", "42-1~0.mp3",
+            "42-1~0.mp3", "42-3~0.mp3", "42-2~0.mp3", "42-4~0.mp3", "42-1~0.mp3",
         ])
 
     def test_missing_year_variants_keep_alternating_original_variants(self):
@@ -35,7 +35,7 @@ class AnnouncementRotationTests(unittest.TestCase):
         for _ in range(4):
             path, count = select_announcement_file(self.folder, 42, count)
             selected.append(path.name)
-        self.assertEqual(selected, ["42-1~0.mp3", "42-2~0.mp3"] * 2)
+        self.assertEqual(selected, ["42-2~0.mp3", "42-1~0.mp3"] * 2)
 
     def test_skips_missing_variants_and_finds_nested_year_file(self):
         nested = self.folder / "nested"
@@ -68,7 +68,7 @@ class AnnouncementRotationTests(unittest.TestCase):
             symlink, count = find_announcement_file(42, 3)
         self.assertEqual(symlink.resolve(), self.folder / "42-3~0.mp3")
         self.assertEqual(symlink.readlink(), Path("42-3~0.mp3"))
-        self.assertEqual(count, 4)
+        self.assertEqual(count, 2)
 
 
 if __name__ == "__main__":

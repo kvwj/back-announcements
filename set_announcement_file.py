@@ -54,15 +54,19 @@ def connect_listener():
     return conn
 
 def select_announcement_file(source_folder, trackid, count):
-    variants = [0] if count == 0 else [
-        (count - 1 + offset) % 4 + 1 for offset in range(4)
-    ]
+    order = (1, 3, 2, 4)
+    if count == 0:
+        variants = [0]
+    else:
+        start = order.index(count)
+        variants = order[start:] + order[:start]
     for variant in variants:
         target_file = f"{trackid}-{variant}~0.mp3"
         for path in source_folder.rglob(target_file):
             if path.is_file():
                 logging.info("Target announcement found: %s", path.name)
-                return path.resolve(), variant % 4 + 1
+                next_count = 0 if variant == 0 else order[(order.index(variant) + 1) % len(order)]
+                return path.resolve(), next_count
 
     logging.info("No available announcement variant found, fallback to dummy file.")
     for path in source_folder.rglob('DUMMY~0.mp3'):
