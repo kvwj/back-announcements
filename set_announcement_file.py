@@ -53,28 +53,34 @@ def connect_listener():
     logging.info("Listening for PostgreSQL notifications on database_errors")
     return conn
 
+def select_announcement_file(source_folder, trackid, count):
+    variants = [0] if count == 0 else [
+        (count - 1 + offset) % 4 + 1 for offset in range(4)
+    ]
+    for variant in variants:
+        target_file = f"{trackid}-{variant}~0.mp3"
+        for path in source_folder.rglob(target_file):
+            if path.is_file():
+                logging.info("Target announcement found: %s", path.name)
+                return path.resolve(), variant % 4 + 1
+
+    logging.info("No available announcement variant found, fallback to dummy file.")
+    for path in source_folder.rglob('DUMMY~0.mp3'):
+        if path.is_file():
+            return path.resolve(), count
+
+    logging.error("Critical error: DUMMY~0.mp3 could not be found in the directory!")
+    return None, count
+
+
 def find_announcement_file(trackid, count):
-    target_file = f"{trackid}-{count}~0.mp3"
-    
     # 1. Base absolute folder path used to find files on the Linux/WSL side
     source_folder = Path('/mnt/zara/Song Announcements').resolve()
     symlink_path = source_folder / 'ANNOUNCEMENT~0.mp3'
 
-    # Search for the track announcement file
-    file_matches = list(source_folder.rglob(target_file))
-
-    if file_matches:
-        logging.info(f"Target announcement found: {file_matches[0].name}")
-        found_file = file_matches[0].resolve()
-    else:
-        logging.info("Announcement file not found, fallback to dummy file.")
-        dummy_matches = list(source_folder.rglob('DUMMY~0.mp3'))
-        
-        if not dummy_matches:
-            logging.error("Critical error: DUMMY~0.mp3 could not be found in the directory!")
-            return None
-            
-        found_file = dummy_matches[0].resolve()
+    found_file, next_count = select_announcement_file(source_folder, trackid, count)
+    if found_file is None:
+        return None, count
 
     # 2. CRITICAL FIX: Calculate the relative path from the symlink's directory
     # This turns '/mnt/zara/Song Announcements/dummy~0.mp3' into just 'dummy~0.mp3'
@@ -90,10 +96,10 @@ def find_announcement_file(trackid, count):
         # Passing the raw relative string tells the symlink to point to the local filename
         symlink_path.symlink_to(relative_target)
         logging.info(f"Successfully updated relative symlink: {symlink_path.name} -> {relative_target}")
-        return symlink_path
+        return symlink_path, next_count
     except OSError as e:
         logging.error(f"Operating System Error creating symlink: {e}")
-        return None
+        return None, count
 
 def lookup_trackid(conn, playback_id: int) -> str | None:
     sql = """
@@ -207,10 +213,7 @@ def main():
                 latest_id,
             )
 
-            if count >= 3:
-                count = 1
-            announcement_file = find_announcement_file(trackid, count)
-            count += 1
+            announcement_file, count = find_announcement_file(trackid, count)
 
     try:
         while True:
@@ -240,14 +243,11 @@ def main():
                             notification,
                         )
 
-                        if count >= 3:
-                            count = 1
-                        announcement_file = find_announcement_file(trackid, count)
-                        count += 1
+                        announcement_file, count = find_announcement_file(trackid, count)
 
                     elif notification.channel == 'database_errors':
                         logging.error(f"CRITICAL: Caught database error payload: {notification.payload}")
-                        announcement_file = find_announcement_file(0, 0)
+                        announcement_file, _ = find_announcement_file(0, 0)
 
     except KeyboardInterrupt:
         logging.info("Exiting on keyboard interrupt")
